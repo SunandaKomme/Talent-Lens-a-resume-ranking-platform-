@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Contribute - TalentLens</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="navbar">
+        <a href="/" style="text-decoration:none;">
+    <div class="logo"><div class="logo-circle">T</div>Talent<span>Lens</span> <span class="logo-lens">🔍</span></div>
+</a>
+        <div class="nav-links">
+            <a href="dashboard.html">Screen Candidates</a>
+            <a href="my_uploads.html">My Uploads</a>
+            <a href="my_contributions.html">My Contributions</a>
+            <a href="showcase_upload.html" class="nav-tooltip">Contribute
+                <span class="tooltip-text">Share a resume that helped you succeed, to help other job seekers</span>
+            </a>
+            <a href="showcase_view.html" class="nav-tooltip">Sample Resumes
+                <span class="tooltip-text">Browse real resumes from different professional roles</span>
+            </a>
+            <div class="profile-section">
+                <div class="profile-icon" id="profileIcon" onclick="toggleDropdown()"></div>
+                <div class="profile-dropdown" id="profileDropdown">
+                    <a href="#" style="cursor:default;" id="profileNameDisplay"></a>
+                    <a href="#" onclick="logout()">Logout</a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="container">
+        <h2>Help Others Land Their <span>Next Role</span></h2>
+        <p class="page-subtitle">Share a resume that worked for you, so other job seekers can learn from real examples.</p>
+
+        <form id="showcaseForm">
+            <input type="text" id="role" placeholder="Role this resume is for (e.g. Data Analyst)" required>
+            <textarea id="description" placeholder="Short note about this resume (optional)" rows="3"></textarea>
+
+            <div class="file-upload-wrapper">
+                <label class="file-upload-label" for="file">
+                    <span class="icon">📤</span>
+                    <span id="fileLabel">Upload Resume (PDF/DOCX)</span>
+                </label>
+                <input type="file" id="file" accept=".pdf,.docx" required>
+                <div class="file-name-display" id="fileNameDisplay"></div>
+            </div>
+
+            <button type="submit">Share Resume</button>
+        </form>
+
+        <p id="result" style="margin-top:16px; color:#555;"></p>
+    </div>
+
+    <script>
+        if (!localStorage.getItem("user_id")) { window.location.href = "login.html"; }
+
+        const userName = localStorage.getItem("user_name") || "User";
+        document.getElementById("profileIcon").innerText = userName.charAt(0).toUpperCase();
+        document.getElementById("profileNameDisplay").innerText = "Hi, " + userName;
+
+        function toggleDropdown() {
+            document.getElementById("profileDropdown").classList.toggle("show");
+        }
+        document.addEventListener("click", function(e) {
+            if (!e.target.closest(".profile-section")) {
+                document.getElementById("profileDropdown").classList.remove("show");
+            }
+        });
+        function logout() {
+    localStorage.removeItem("user_id");
+    localStorage.removeItem("user_name");
+    window.location.href = "/";
+}
+
+        document.getElementById("file").addEventListener("change", function() {
+            document.getElementById("fileNameDisplay").innerText = this.files.length ? this.files[0].name : "";
+        });
+
+        document.getElementById("showcaseForm").addEventListener("submit", async function(e) {
+            e.preventDefault();
+            const userId = localStorage.getItem("user_id");
+
+            const formData = new FormData();
+            formData.append("user_id", userId);
+            formData.append("role", document.getElementById("role").value);
+            formData.append("description", document.getElementById("description").value);
+            formData.append("file", document.getElementById("file").files[0]);
+
+            const response = await fetch("http://127.0.0.1:8000/showcase/upload", {
+                method: "POST",
+                body: formData
+            });
+            const data = await response.json();
+            document.getElementById("result").innerText = data.message || data.detail;
+        });
+    </script>
+</body>
+</html>

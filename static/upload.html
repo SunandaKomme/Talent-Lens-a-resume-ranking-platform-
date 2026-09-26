@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Upload Job & Resumes</title>
+</head>
+<body>
+    <h2>Paste Job Description & Upload Resumes</h2>
+    <form id="uploadForm">
+        <input type="number" id="user_id" placeholder="Your User ID" required><br><br>
+        <textarea id="description_text" placeholder="Paste job description here" rows="5" cols="50" required></textarea><br><br>
+        <input type="file" id="resumes" multiple accept=".pdf,.docx" required><br><br>
+        <button type="submit">Upload</button>
+    </form>
+    <p id="result"></p>
+
+    <script>
+        document.getElementById("uploadForm").addEventListener("submit", async function(e) {
+            e.preventDefault();
+
+            const formData = new FormData();
+            formData.append("user_id", document.getElementById("user_id").value);
+            formData.append("description_text", document.getElementById("description_text").value);
+
+            const files = document.getElementById("resumes").files;
+            for (let i = 0; i < files.length; i++) {
+                formData.append("resumes", files[i]);
+            }
+
+            const response = await fetch("http://127.0.0.1:8000/upload-job", {
+                method: "POST",
+                body: formData
+            });
+
+            const data = await response.json();
+            document.getElementById("result").innerText = JSON.stringify(data);
+        });
+    </script>
+</body>
+</html>

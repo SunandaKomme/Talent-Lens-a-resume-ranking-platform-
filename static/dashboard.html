@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Dashboard - Resume Ranker</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+        <div class="navbar">
+        <div class="logo"><div class="logo-circle">T</div>Talent<span>Lens</span> <span class="logo-lens">🔍</span></div>
+        <div class="nav-links">
+            <a href="dashboard.html">Screen Candidates</a>
+            <a href="my_uploads.html">My Uploads</a>
+            <a href="my_contributions.html">My Contributions</a>
+            <a href="showcase_upload.html" class="nav-tooltip">Contribute
+                <span class="tooltip-text">Share a resume that helped you succeed, to help other job seekers</span>
+            </a>
+            <a href="showcase_view.html" class="nav-tooltip">Sample Resumes
+                <span class="tooltip-text">Browse real resumes from different professional roles</span>
+            </a>
+
+            <div class="profile-section">
+                <div class="profile-icon" id="profileIcon" onclick="toggleDropdown()"></div>
+                <div class="profile-dropdown" id="profileDropdown">
+                    <a href="#" style="cursor:default;" id="profileNameDisplay"></a>
+                    <a href="#" onclick="logout()">Logout</a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="container">
+        <h2>Rank Candidates</h2>
+
+        <form id="uploadForm">
+            <textarea id="description_text" placeholder="Paste job description here" rows="6" required></textarea>
+                <div class="file-upload-wrapper">
+                <label class="file-upload-label" for="resumes">
+                    <span class="icon">📤</span>
+                    <span id="fileLabel">Upload Resumes (PDF/DOCX)</span>
+                </label>
+                <input type="file" id="resumes" multiple accept=".pdf,.docx" required>
+                <div class="file-name-display" id="fileNameDisplay"></div>
+            </div>
+            <button type="submit">Run</button>
+        </form>
+
+        <div id="results"></div>
+    </div>
+
+    <script>
+            if (!localStorage.getItem("user_id")) {
+            window.location.href = "login.html";
+        }
+        const userName = localStorage.getItem("user_name") || "User";
+        document.getElementById("profileIcon").innerText = userName.charAt(0).toUpperCase();
+        document.getElementById("profileNameDisplay").innerText = "Hi, " + userName;
+
+        function toggleDropdown() {
+            document.getElementById("profileDropdown").classList.toggle("show");
+        }
+
+        document.addEventListener("click", function(e) {
+            if (!e.target.closest(".profile-section")) {
+                document.getElementById("profileDropdown").classList.remove("show");
+            }
+        });
+        function logout() {
+    localStorage.removeItem("user_id");
+    localStorage.removeItem("user_name");
+    window.location.href = "/";
+}
+             document.getElementById("resumes").addEventListener("change", function() {
+            const files = this.files;
+            if (files.length > 0) {
+                const names = Array.from(files).map(f => f.name).join(", ");
+                document.getElementById("fileNameDisplay").innerText = `${files.length} file(s): ${names}`;
+            } else {
+                document.getElementById("fileNameDisplay").innerText = "";
+            }
+        });
+
+        document.getElementById("uploadForm").addEventListener("submit", async function(e) {
+            e.preventDefault();
+
+            document.getElementById("results").innerHTML = "Processing... please wait.";
+
+            const userId = localStorage.getItem("user_id");
+            if (!userId) {
+                alert("Please log in first.");
+                window.location.href = "login.html";
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append("user_id", userId);
+            formData.append("description_text", document.getElementById("description_text").value);
+
+            const files = document.getElementById("resumes").files;
+            for (let i = 0; i < files.length; i++) {
+                formData.append("resumes", files[i]);
+            }
+
+            const uploadResponse = await fetch("http://127.0.0.1:8000/upload-job", {
+                method: "POST",
+                body: formData
+            });
+            const uploadData = await uploadResponse.json();
+            const jobId = uploadData.job_id;
+
+            const rankResponse = await fetch(`http://127.0.0.1:8000/rank/${jobId}`, {
+                method: "POST"
+            });
+            const rankedResults = await rankResponse.json();
+
+            let html = "<h3>Ranked Candidates</h3>";
+            rankedResults.forEach(function(candidate, index) {
+                let scoreClass = "score-low";
+                if (candidate.score >= 70) scoreClass = "score-high";
+                else if (candidate.score >= 40) scoreClass = "score-mid";
+
+                html += `
+                    <div class="candidate-card">
+                        <strong>#${index + 1} ${candidate.filename}</strong>
+                        <span class="score-badge ${scoreClass}">${candidate.score}%</span>
+                        <div class="skills-line"><span class="matched">Matched:</span> ${candidate.matched_skills || "None"}</div>
+                        <div class="skills-line"><span class="missing">Missing:</span> ${candidate.missing_skills || "None"}</div>
+                    </div>
+                `;
+            });
+
+            document.getElementById("results").innerHTML = html;
+        });
+    </script>
+</body>
+</html>

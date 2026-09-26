@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Login - Resume Ranker</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="navbar">
+        <a href="/" style="text-decoration:none;">
+    <div class="logo"><div class="logo-circle">T</div>Talent<span>Lens</span> <span class="logo-lens">🔍</span></div>
+</a>
+    </div>
+
+    <div class="container">
+        <h2>Welcome <span>Back</span></h2>
+        <form id="loginForm">
+            <input type="email" id="email" placeholder="Email" required>
+            <input type="password" id="password" placeholder="Password" required>
+            <button type="submit">Login</button>
+        </form>
+        <p id="result" style="margin-top:16px; color:#a5a5b8;"></p>
+        <p style="margin-top:16px; color:#555;"><a href="forgot_password.html" style="color:#8b5cf6;">Forgot password?</a></p>
+        <p style="margin-top:16px; color:#a5a5b8;">Don't have an account? <a href="register.html" style="color:#8b5cf6;">Register here</a></p>
+    </div>
+
+    <script>
+        document.getElementById("loginForm").addEventListener("submit", async function(e) {
+            e.preventDefault();
+
+            const email = document.getElementById("email").value;
+            const password = document.getElementById("password").value;
+
+            const response = await fetch(`http://127.0.0.1:8000/login?email=${email}&password=${password}`, {
+                method: "POST"
+            });
+
+            const data = await response.json();
+
+            if (response.ok) {
+                localStorage.setItem("user_id", data.user_id);
+                localStorage.setItem("user_name", data.name);
+                document.getElementById("result").innerText = "Login successful! Redirecting...";
+                window.location.href = "dashboard.html";
+            } else {
+                document.getElementById("result").innerText = data.detail;
+            }
+        });
+    </script>
+</body>
+</html>

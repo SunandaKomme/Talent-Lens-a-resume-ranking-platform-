@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>My Uploads - TalentLens</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="navbar">
+        <a href="/" style="text-decoration:none;">
+            <div class="logo"><div class="logo-circle">T</div>Talent<span>Lens</span> <span class="logo-lens">🔍</span></div>
+        </a>
+        <div class="nav-links">
+            <a href="dashboard.html">Screen Candidates</a>
+            <a href="my_uploads.html">My Uploads</a>
+            <a href="showcase_upload.html" class="nav-tooltip">Contribute
+                <span class="tooltip-text">Share a resume that helped you succeed, to help other job seekers</span>
+            </a>
+            <a href="showcase_view.html" class="nav-tooltip">Sample Resumes
+                <span class="tooltip-text">Browse real resumes from different professional roles</span>
+            </a>
+            <a href="my_contributions.html">My Contributions</a>
+            <div class="profile-section">
+                <div class="profile-icon" id="profileIcon" onclick="toggleDropdown()"></div>
+                <div class="profile-dropdown" id="profileDropdown">
+                    <a href="#" style="cursor:default;" id="profileNameDisplay"></a>
+                    <a href="#" onclick="logout()">Logout</a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="container" style="max-width:900px;">
+        <h2>My <span>Uploads</span></h2>
+        <p class="page-subtitle">Every job description you've screened and the candidates you ranked against it.</p>
+
+        <div id="uploadsList">Loading...</div>
+    </div>
+
+    <!-- Custom confirmation modal -->
+    <div class="modal-overlay" id="modalOverlay">
+        <div class="modal-box">
+            <p>Are you sure you want to delete this job and its ranked candidates?</p>
+            <div class="modal-buttons">
+                <button class="modal-btn-no" onclick="closeModal()">No</button>
+                <button class="modal-btn-yes" onclick="confirmDelete()">Yes</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        if (!localStorage.getItem("user_id")) { window.location.href = "login.html"; }
+
+        const userName = localStorage.getItem("user_name") || "User";
+        document.getElementById("profileIcon").innerText = userName.charAt(0).toUpperCase();
+        document.getElementById("profileNameDisplay").innerText = "Hi, " + userName;
+
+        function toggleDropdown() {
+            document.getElementById("profileDropdown").classList.toggle("show");
+        }
+        document.addEventListener("click", function(e) {
+            if (!e.target.closest(".profile-section")) {
+                document.getElementById("profileDropdown").classList.remove("show");
+            }
+        });
+        function logout() {
+            localStorage.removeItem("user_id");
+            localStorage.removeItem("user_name");
+            window.location.href = "/";
+        }
+
+        let jobPendingDelete = null;
+
+        async function loadMyUploads() {
+            const userId = localStorage.getItem("user_id");
+            const response = await fetch(`http://127.0.0.1:8000/my-uploads/${userId}`);
+            const jobs = await response.json();
+
+            if (jobs.length === 0) {
+                document.getElementById("uploadsList").innerHTML = "<p style='color:#888;'>You haven't screened any candidates yet.</p>";
+                return;
+            }
+
+            let html = "";
+            jobs.forEach(function(job, index) {
+                const shortDesc = job.description_text.length > 120
+                    ? job.description_text.substring(0, 120) + "..."
+                    : job.description_text;
+
+                let resumesHtml = "";
+                job.resumes.forEach(function(r, i) {
+                    let scoreClass = "score-low";
+                    if (r.score >= 70) scoreClass = "score-high";
+                    else if (r.score >= 40) scoreClass = "score-mid";
+
+                    resumesHtml += `
+                        <div class="candidate-card">
+                            <strong>#${i + 1} ${r.filename}</strong>
+                            <span class="score-badge ${scoreClass}">${r.score}%</span>
+                            <div class="skills-line"><span class="matched">Matched:</span> ${r.matched_skills || "None"}</div>
+                            <div class="skills-line"><span class="missing">Missing:</span> ${r.missing_skills || "None"}</div>
+                        </div>
+                    `;
+                });
+
+                html += `
+                    <div class="upload-entry">
+                        <div class="upload-entry-header">
+                            <div onclick="toggleEntry(${index})" style="flex:1; cursor:pointer;">
+                                <strong>Job #${job.job_id}</strong>
+                                <p class="upload-entry-desc">${shortDesc}</p>
+                            </div>
+                            <span class="upload-entry-count">${job.resumes.length} candidate(s)</span>
+                            <span class="trash-icon" onclick="openModal(event, ${job.job_id})">🗑️</span>
+                        </div>
+                        <div class="upload-entry-body" id="entry-${index}" style="display:none;">
+                            ${resumesHtml}
+                        </div>
+                    </div>
+                `;
+            });
+
+            document.getElementById("uploadsList").innerHTML = html;
+        }
+
+        function toggleEntry(index) {
+            const el = document.getElementById(`entry-${index}`);
+            el.style.display = el.style.display === "none" ? "block" : "none";
+        }
+
+        function openModal(event, jobId) {
+            event.stopPropagation();
+
+            const icon = event.target;
+            icon.classList.add("popping");
+            setTimeout(() => icon.classList.remove("popping"), 200);
+
+            jobPendingDelete = jobId;
+            document.getElementById("modalOverlay").classList.add("show");
+        }
+
+        function closeModal() {
+            jobPendingDelete = null;
+            document.getElementById("modalOverlay").classList.remove("show");
+        }
+
+        async function confirmDelete() {
+            if (!jobPendingDelete) return;
+
+            const userId = localStorage.getItem("user_id");
+            const response = await fetch(`http://127.0.0.1:8000/job/delete/${jobPendingDelete}?user_id=${userId}`, {
+                method: "DELETE"
+            });
+
+            closeModal();
+
+            if (response.ok) {
+                loadMyUploads();
+            } else {
+                const data = await response.json();
+                alert(data.detail || "Failed to delete.");
+            }
+        }
+
+        loadMyUploads();
+    </script>
+</body>
+</html>

@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>My Contributions - TalentLens</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="navbar">
+        <a href="/" style="text-decoration:none;">
+            <div class="logo"><div class="logo-circle">T</div>Talent<span>Lens</span> <span class="logo-lens">🔍</span></div>
+        </a>
+        <div class="nav-links">
+            <a href="dashboard.html">Screen Candidates</a>
+            <a href="my_uploads.html">My Uploads</a>
+            <a href="showcase_upload.html" class="nav-tooltip">Contribute
+                <span class="tooltip-text">Share a resume that helped you succeed, to help other job seekers</span>
+            </a>
+            <a href="showcase_view.html" class="nav-tooltip">Sample Resumes
+                <span class="tooltip-text">Browse real resumes from different professional roles</span>
+            </a>
+            <a href="my_contributions.html">My Contributions</a>
+            <div class="profile-section">
+                <div class="profile-icon" id="profileIcon" onclick="toggleDropdown()"></div>
+                <div class="profile-dropdown" id="profileDropdown">
+                    <a href="#" style="cursor:default;" id="profileNameDisplay"></a>
+                    <a href="#" onclick="logout()">Logout</a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="container" style="max-width:1000px;">
+        <h2>My <span>Contributions</span></h2>
+        <p class="page-subtitle">Resumes you've shared to help other job seekers.</p>
+
+        <div id="contributionsList" class="showcase-grid">Loading...</div>
+    </div>
+     
+
+          <!-- Custom confirmation modal -->
+    <div class="modal-overlay" id="modalOverlay">
+        <div class="modal-box">
+            <p>Are you sure you want to delete this resume?</p>
+            <div class="modal-buttons">
+                <button class="modal-btn-no" onclick="closeModal()">No</button>
+                <button class="modal-btn-yes" onclick="confirmDelete()">Yes</button>
+            </div>
+        </div>
+    </div>
+
+
+    <script>
+        if (!localStorage.getItem("user_id")) { window.location.href = "login.html"; }
+
+        const userName = localStorage.getItem("user_name") || "User";
+        document.getElementById("profileIcon").innerText = userName.charAt(0).toUpperCase();
+        document.getElementById("profileNameDisplay").innerText = "Hi, " + userName;
+
+        function toggleDropdown() {
+            document.getElementById("profileDropdown").classList.toggle("show");
+        }
+        document.addEventListener("click", function(e) {
+            if (!e.target.closest(".profile-section")) {
+                document.getElementById("profileDropdown").classList.remove("show");
+            }
+        });
+        function logout() {
+            localStorage.removeItem("user_id");
+            localStorage.removeItem("user_name");
+            window.location.href = "/";
+        }
+
+        async function loadMyContributions() {
+            const userId = localStorage.getItem("user_id");
+            const response = await fetch(`http://127.0.0.1:8000/my-contributions/${userId}`);
+            const resumes = await response.json();
+
+            let html = "";
+            resumes.forEach(function(r) {
+                html += `
+                    <div class="showcase-card">
+                        <div class="showcase-card-header"></div>
+                        <div class="showcase-role-badge">${r.role || "General"}</div>
+                        <h4>${r.filename}</h4>
+                        <p>${r.description || "No description provided."}</p>
+                        <div class="showcase-card-buttons">
+                            <a href="${r.file_url}" target="_blank" class="btn-view">${r.filename.endsWith('.pdf') ? 'View' : 'Open'}</a>
+                            <a href="${r.file_url}" download class="btn-download">Download</a>
+                        </div>
+                        <button onclick="deleteResume(${r.id})" class="btn-delete">Delete</button>
+                    </div>
+                `;
+            });
+
+            document.getElementById("contributionsList").innerHTML = html || "<p style='color:#888;'>You haven't shared any resumes yet.</p>";
+        }
+
+                let resumePendingDelete = null;
+
+        function deleteResume(id) {
+            resumePendingDelete = id;
+            document.getElementById("modalOverlay").classList.add("show");
+        }
+
+        function closeModal() {
+            resumePendingDelete = null;
+            document.getElementById("modalOverlay").classList.remove("show");
+        }
+
+        async function confirmDelete() {
+            if (!resumePendingDelete) return;
+
+            const userId = localStorage.getItem("user_id");
+            const response = await fetch(`http://127.0.0.1:8000/showcase/delete/${resumePendingDelete}?user_id=${userId}`, {
+                method: "DELETE"
+            });
+
+            closeModal();
+
+            if (response.ok) {
+                loadMyContributions();
+            } else {
+                const data = await response.json();
+                alert(data.detail || "Failed to delete resume.");
+            }
+        }
+
+        loadMyContributions();
+    </script>
+</body>
+</html>

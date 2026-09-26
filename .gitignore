@@ -1,0 +1,7 @@
+venv/
+__pycache__/
+*.pyc
+app.db
+static/showcase_files/
+.vscode/
+email_config.py
